@@ -1,0 +1,12 @@
+.build/
+build/
+.swiftpm/
+Package.resolved
+*.xcodeproj/
+DerivedData/
+.DS_Store
+*.app
+.claude/
+*.o
+*.d
+*.swiftdeps

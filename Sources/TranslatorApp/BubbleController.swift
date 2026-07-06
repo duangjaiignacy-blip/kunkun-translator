@@ -197,16 +197,29 @@ struct BubbleView: View {
     let onTap: () -> Void
     @State private var hover = false
     var body: some View {
-        Circle()
-            .fill(LinearGradient(colors: [.blue, .purple],
-                                 startPoint: .topLeading, endPoint: .bottomTrailing))
-            .overlay(Text("译").font(.system(size: 10, weight: .bold)).foregroundColor(.white))
-            .shadow(color: .black.opacity(0.3), radius: hover ? 5 : 2, x: 0, y: 1)
-            .scaleEffect(hover ? 1.18 : 1.0)
-            .animation(.easeOut(duration: 0.12), value: hover)
-            .onHover { hover = $0 }
-            .onTapGesture { onTap() }
-            .frame(width: 22, height: 22)
+        ZStack {
+            Circle()
+                .fill(Color(red: 0.88, green: 0.22, blue: 0.45))
+                .frame(width: 14, height: 14)
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.92), lineWidth: 1.5)
+                )
+                .shadow(color: Color(red: 0.40, green: 0.06, blue: 0.18).opacity(0.28),
+                        radius: hover ? 5 : 3, x: 0, y: 1)
+                .scaleEffect(hover ? 1.12 : 1.0)
+                .animation(.easeOut(duration: 0.12), value: hover)
+                .overlay(
+                    Text("译")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.white)
+                        .offset(y: -0.2)
+                )
+        }
+        .frame(width: 22, height: 22)
+        .contentShape(Circle())
+        .onHover { hover = $0 }
+        .onTapGesture { onTap() }
     }
 }
 

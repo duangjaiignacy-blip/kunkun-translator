@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import SwiftUI
 
 enum LLMProvider: String, Codable, CaseIterable, Identifiable {
     case siliconflow = "硅基流动"
@@ -84,6 +85,20 @@ enum InteractionMode: String, Codable, CaseIterable, Identifiable {
     var bubbleEnabled: Bool { self == .bubble || self == .both }
 }
 
+enum AppThemeMode: String, Codable, CaseIterable, Identifiable {
+    case light = "浅色"
+    case dark = "深色"
+
+    var id: String { rawValue }
+
+    var colorScheme: ColorScheme {
+        switch self {
+        case .light: return .light
+        case .dark: return .dark
+        }
+    }
+}
+
 struct ResolvedSettings: Sendable {
     let apiKey: String
     let baseURL: String
@@ -107,6 +122,7 @@ final class SettingsStore: ObservableObject {
     @Published var speechRate: Double             { didSet { d.set(speechRate,         forKey: K.rate) } }
     @Published var englishAccent: EnglishAccent   { didSet { d.set(englishAccent.rawValue, forKey: K.accent) } }
     @Published var enabled: Bool                  { didSet { d.set(enabled,            forKey: K.enabled) } }
+    @Published var themeMode: AppThemeMode        { didSet { d.set(themeMode.rawValue, forKey: K.themeMode) } }
 
     /// 硅基流动「刷新模型列表」拉到的在线模型，缓存在内存供下拉用（不持久化，每次刷新即可）。
     @Published var fetchedModels: [String] = []
@@ -123,6 +139,7 @@ final class SettingsStore: ObservableObject {
         static let rate = "speechRate"
         static let accent = "englishAccent"
         static let enabled = "enabled"
+        static let themeMode = "themeMode"
         static let keyMigrated = "apiKeyMigratedToKeychain"
         static let dsModelMigrated = "deepseekModelMigratedV4"
     }
@@ -150,6 +167,7 @@ final class SettingsStore: ObservableObject {
         self.speechRate           = (ud.object(forKey: K.rate) as? Double) ?? 0.35
         self.englishAccent        = EnglishAccent(rawValue: ud.string(forKey: K.accent) ?? "") ?? .american
         self.enabled              = (ud.object(forKey: K.enabled) as? Bool) ?? true
+        self.themeMode            = AppThemeMode(rawValue: ud.string(forKey: K.themeMode) ?? "") ?? .dark
 
         // 一次性迁移：DeepSeek 直连的 deepseek-chat / deepseek-reasoner 于 2026-07-24 弃用，
         // 把存量旧值改写成 deepseek-v4-flash（仅 DeepSeek 直连 provider，且只迁一次）。

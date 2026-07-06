@@ -1,119 +1,157 @@
-# 困困翻译助手 · macOS 全局翻译
+# 困困翻译助手 · Kunkun Translator
 
-一个 macOS 菜单栏应用：在任意 App 里用鼠标**框选**英文，选区右上方出现「译」小圆点，点一下用大模型翻译，可朗读、可加入本地生词本，还能查看学习总结。
+困困翻译助手是一款常驻 macOS 菜单栏的中英双向 AI 翻译工具。它的目标不是做一个需要反复复制粘贴的翻译窗口，而是在你阅读网页、PDF、飞书、文档、表格或任意 App 时，把“选中一段文字 -> 点一下译 -> 加入生词本 -> 回头复习”做成一个轻量、连续的工作流。
 
-## 功能
+当前版本支持全局选中文字触发、小圆点翻译入口、悬浮翻译卡片、朗读、生词本、学习总结、浅色/深色模式，以及 OpenAI 兼容的大模型服务商配置。
 
-- 全局：在任何 App 里都能用（原生 App、Chrome/Safari 网页、邮件、备忘录、PDF、Word、聊天软件…）
-- 触发：**鼠标拖动框选英文文字**，松开鼠标后选区右上角出小圆点
-- 两种触发方式：默认"框选即触发"，可切到"按 Option + 框选"（避免日常选中文字误触）
-- 取文字：优先用系统辅助功能 API（不动剪贴板）；AX 拿不到时自动用 Cmd+C 兜底（结束后**自动还原剪贴板**）
-- 翻译：接入 DeepSeek / 通义千问 / Kimi（OpenAI 兼容协议，自定义也支持）
-- 朗读：系统原生 `AVSpeechSynthesizer`，免费、不联网
-- 生词本：本地 JSON 存到 `~/Library/Application Support/TranslatorApp/`
-- 学习总结：基础统计 + 一键 AI 总结建议
-- 隐私：API Key 存本地 UserDefaults，生词本只存本地，没有任何上传
+## 产品预览
+
+### 首页 · 浅色模式
+
+![困困翻译助手浅色首页](docs/images/kunkun-home-light.png)
+
+这张图展示的是应用首页的浅色模式。顶部是主导航，可以在首页、生词本、学习总结和设置之间切换；右上角是浅色/深色模式切换。中间的双栏翻译区用于表达产品的核心逻辑：左侧是原文，右侧是自动判断目标语言后的译文。底部状态条展示当前翻译助手状态、入口能力和常用操作。
+
+### 首页 · 深色模式
+
+![困困翻译助手深色首页](docs/images/kunkun-home-dark.png)
+
+深色模式保留同一套信息架构，适合夜间阅读、长时间查资料或低亮度环境。新版界面重点强化了深色下的层级、按钮可读性和底部标签对比度，避免重要操作被背景吞掉。
+
+### 学习总结
+
+![困困翻译助手学习总结](docs/images/kunkun-summary-light.png)
+
+学习总结页用于把翻译行为沉淀成复习线索。它会展示今日新增、近 7 天、近 30 天、生词总数、连续学习等数据，并按熟悉度分布和来源 App 汇总生词，方便判断自己最近在什么场景里遇到最多新词。
+
+## 核心能力
+
+- 全局选中触发：在任意 App 中选中文字后，选区附近出现粉色「译」小圆点，点击即可翻译。
+- 中英自动判断：选中英文或非中文内容时默认翻译成中文；选中中文时默认翻译成英文。
+- 安静失败：如果某些 App 暂时读取不到选中文字，不再弹出打断式警告，避免干扰当前工作。
+- 悬浮翻译卡片：翻译结果以独立浮窗展示，支持拖动位置，并带有轻微透明效果。
+- 生词本：翻译结果可以一键加入本地生词本，后续在主界面统一查看、搜索、排序和复习。
+- 学习统计：按时间、熟悉度和来源 App 汇总学习记录，帮助把零散翻译变成可复盘的数据。
+- 朗读：使用 macOS 原生 `AVSpeechSynthesizer` 朗读单词或句子。
+- 浅色/深色模式：主界面支持手动切换主题，适配不同阅读环境。
+- 多服务商配置：支持 SiliconFlow、DeepSeek、通义千问、Kimi 以及自定义 OpenAI 兼容接口。
+- Apple 翻译兜底：在可用系统环境下，可以通过系统翻译能力做离线或备用翻译。
+
+## 工作方式
+
+困困翻译助手由几个本地模块组成：
+
+- `SelectionDetector` 监听鼠标选区和触发时机。
+- `SelectionReader` 优先通过 macOS 辅助功能 API 读取选中文字，必要时使用剪贴板兜底并恢复剪贴板。
+- `BubbleController` 管理粉色「译」小圆点和翻译结果浮窗。
+- `LLMClient` 负责和大模型服务商通信，并根据文本内容决定翻译目标语言。
+- `VocabularyStore` 将生词本数据保存到本地 JSON 文件。
+- `SettingsStore` 保存用户配置，并把 API Key 按服务商写入 Keychain。
+- `MainView`、`HomeView`、`VocabularyView`、`SummaryView` 和 `SettingsView` 组成主界面。
+
+## 安装与运行
+
+项目使用 Swift Package Manager 构建 macOS App。
+
+```bash
+git clone https://github.com/duangjaiignacy-blip/kunkun-translator.git
+cd kunkun-translator
+scripts/build-app.sh
+open "build/困困翻译助手.app"
+```
+
+如果你希望安装到系统应用目录：
+
+```bash
+ditto "build/困困翻译助手.app" "/Applications/困困翻译助手.app"
+open "/Applications/困困翻译助手.app"
+```
+
+首次启动后，需要在 macOS 系统设置中授予辅助功能权限：
+
+```text
+系统设置 -> 隐私与安全性 -> 辅助功能 -> 打开困困翻译助手
+```
+
+授权后建议重启应用，让全局选区读取能力完整生效。
+
+## 首次配置
+
+1. 打开应用后进入「设置」。
+2. 选择服务商，例如 SiliconFlow、DeepSeek、通义千问、Kimi 或自定义接口。
+3. 填入 API Key。密钥会写入 macOS Keychain，不再明文保存在 UserDefaults。
+4. 选择触发方式：可以框选即触发，也可以设置为按住 Option 后再触发。
+5. 回到任意 App，选中一段中文或英文，点击「译」小圆点开始翻译。
+
+## 隐私说明
+
+- API Key 保存在 macOS Keychain 中，并按服务商分开保存。
+- 生词本保存在本机 `~/Library/Application Support/TranslatorApp/`。
+- 当你主动触发翻译时，选中的文字会发送到你配置的大模型服务商。
+- 项目没有遥测、埋点或后台上传生词本的逻辑。
+- 使用剪贴板兜底读取文字时，应用会在读取后尽量恢复原剪贴板内容。
 
 ## 项目结构
 
-```
-困困翻译助手/
+```text
+.
 ├── Package.swift
-└── Sources/TranslatorApp/
-    ├── main.swift                 # 入口
-    ├── AppDelegate.swift          # 启动装配
-    ├── Permissions.swift          # 辅助功能权限
-    ├── SettingsStore.swift        # 配置持久化（UserDefaults）
-    ├── LLMClient.swift            # OpenAI 兼容客户端（翻译 + 总结）
-    ├── VocabularyStore.swift      # 生词本本地存储（JSON）
-    ├── Speaker.swift              # AVSpeechSynthesizer 朗读
-    ├── SelectionReader.swift      # AX 读选中文字 + Cmd+C 兜底
-    ├── SelectionDetector.swift    # CGEventTap 监听鼠标拖拽
-    ├── BubbleController.swift     # 小圆点浮窗 + 翻译结果浮窗
-    ├── SettingsView.swift         # 设置页 SwiftUI
-    ├── VocabularyView.swift       # 生词本 SwiftUI
-    ├── SummaryView.swift          # 学习总结 SwiftUI
-    ├── WindowManager.swift        # 管理三个独立窗口
-    └── StatusBarController.swift  # 菜单栏图标 + 菜单
+├── scripts/
+│   ├── build-app.sh
+│   └── gen-icon.swift
+├── docs/
+│   └── images/
+│       ├── kunkun-home-light.png
+│       ├── kunkun-home-dark.png
+│       └── kunkun-summary-light.png
+├── Sources/TranslatorApp/
+│   ├── main.swift
+│   ├── AppDelegate.swift
+│   ├── AppleTranslator.swift
+│   ├── BubbleController.swift
+│   ├── HomeView.swift
+│   ├── Keychain.swift
+│   ├── LLMClient.swift
+│   ├── MainView.swift
+│   ├── ModelCatalog.swift
+│   ├── SelectionDetector.swift
+│   ├── SelectionReader.swift
+│   ├── SettingsStore.swift
+│   ├── SettingsView.swift
+│   ├── SummaryView.swift
+│   ├── Theme.swift
+│   ├── VocabularyStore.swift
+│   ├── VocabularyView.swift
+│   └── WindowManager.swift
+└── Tests/TranslatorAppTests/
+    ├── AppDelegateSelectionTests.swift
+    ├── AppThemeTests.swift
+    ├── BubbleControllerTests.swift
+    ├── HomeViewDesignTests.swift
+    ├── IconPaletteTests.swift
+    ├── LLMClientPromptTests.swift
+    └── SelectionReaderTests.swift
 ```
 
-## 怎么跑（最快验证方式：终端 `swift run`）
+## 开发与测试
 
 ```bash
-cd "/Users/mac/Desktop/Claude code/困困翻译助手"
-swift build -c release
-.build/release/TranslatorApp
+swift test
+scripts/build-app.sh
 ```
 
-第一次启动：
-
-1. 系统会弹「辅助功能」权限请求，去「系统设置 → 隐私与安全性 → 辅助功能」打开 `TranslatorApp` 的开关（如果在终端里跑，会显示为 `Terminal` 或你的 IDE 名 —— 这是 SPM 跑可执行文件时的限制，下面会讲怎么打包成 `.app`）。
-2. 在弹出的设置窗口里选服务商、填 API Key。各家 API Key 申请入口：
-   - DeepSeek: https://platform.deepseek.com/api_keys
-   - 通义千问（DashScope）：https://dashscope.console.aliyun.com/apiKey
-   - Kimi（Moonshot）：https://platform.moonshot.cn/console/api-keys
-
-## 用法
-
-- 菜单栏会出现一个「译」字图标
-- 在任意 App 里**用鼠标拖动选中**英文文字（按住左键拖一段，松开）
-- 选区右上方出现紫蓝色小圆点 → 点它 → 翻译卡片弹出
-- 卡片里：🔊 朗读、⭐ 加入生词本、❌ 关闭
-- 想避免日常框选误触，可在设置里切到「按 Option + 框选才触发」
-- 菜单栏 → 生词本 / 学习总结 / 设置
-
-## 打包成 .app（推荐，避免每次以 Terminal 身份申请权限）
-
-最简单的做法：用 Xcode 新建一个 macOS App 项目，把 `Sources/TranslatorApp` 里的 .swift 文件加入项目，去 `Info.plist` 加：
-
-- `LSUIElement = YES`（不在 Dock 显示）
-- `NSAppleEventsUsageDescription = 用于读取屏幕上文字以翻译`
-
-然后 Xcode 直接编译就有 .app 了。
-
-或者用 `swift build` 出的二进制手工打包：
-
-```bash
-APP="困困翻译助手.app"
-mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp .build/release/TranslatorApp "$APP/Contents/MacOS/TranslatorApp"
-cat > "$APP/Contents/Info.plist" <<'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0"><dict>
-  <key>CFBundleName</key><string>困困翻译助手</string>
-  <key>CFBundleIdentifier</key><string>com.local.translator</string>
-  <key>CFBundleExecutable</key><string>TranslatorApp</string>
-  <key>CFBundlePackageType</key><string>APPL</string>
-  <key>CFBundleShortVersionString</key><string>0.1</string>
-  <key>LSMinimumSystemVersion</key><string>13.0</string>
-  <key>LSUIElement</key><true/>
-  <key>NSAppleEventsUsageDescription</key><string>用于读取屏幕上文字以翻译</string>
-</dict></plist>
-PLIST
-codesign --force --deep --sign - "$APP"
-open "$APP"
-```
+`swift test` 用于检查翻译目标语言、选区读取、主题配置和关键 UI 结构；`scripts/build-app.sh` 会生成可直接打开的 macOS `.app`。
 
 ## 已知限制
 
-- **盲区**：Electron 类 App（VSCode、Slack、Notion 桌面端等）和 Canvas 渲染的内容，AX 拿不到选中文字。这种情况会用 Cmd+C 兜底（设置里可关），所以大多数情况仍可工作；但极少数 App 既不暴露 AX 也屏蔽 Cmd+C 时无解。
-- **小圆点位置**：AX 支持选区 bounds 的 App 里，圆点精确出现在选区右上方；其它 App 退回到鼠标松开点附近。
-- 第一次开了辅助功能权限后**必须重启 App** 才生效。
-- Cmd+C 兜底会模拟一次 ⌘+C，时间在 0.1~0.4 秒，期间剪贴板会短暂被读取再还原。
-- 没接联网 TTS，系统朗读音质一般。可以后续接 Edge TTS 或 ElevenLabs。
+- 某些 Electron、Canvas 或自绘界面的 App 不一定能稳定暴露选中文字，应用会尝试使用剪贴板兜底。
+- 第一次开启辅助功能权限后，需要重启应用。
+- 翻译质量取决于你配置的服务商和模型。
+- Apple 系统翻译能力依赖当前 macOS 版本和系统可用性。
 
-## 后续可以加
+## 适合场景
 
-- 全局快捷键（如 ⌥⇧Space）替代鼠标点圆点
-- 句子级翻译时同时输出语法解析
-- 多 provider 同时配置，按场景切换
-- iCloud 同步生词本
-- 复习模式（间隔重复算法）
-- 一键导出 Anki
-
-## 隐私
-
-- 翻译请求会把你悬停时读到的那段文字发到你选的 LLM 服务商
-- API Key、生词本只存本地，没有任何遥测
-- 源码可读，欢迎自己审计
+- 读英文技术文档、论文、产品材料时快速查句子。
+- 在飞书、Notion、网页、PDF、表格中随手翻译中英内容。
+- 把高频遇到的词沉淀成生词本，而不是查完就忘。
+- 用学习总结查看最近积累的词汇来源和复习进度。

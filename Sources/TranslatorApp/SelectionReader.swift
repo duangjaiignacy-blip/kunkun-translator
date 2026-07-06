@@ -47,8 +47,8 @@ enum SelectionReader {
             return nil
         }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, containsEnglishLetters(trimmed) else {
-            Log.info("AX 拿到的文字 不含英文，跳过：\(text.prefix(30))")
+        guard !trimmed.isEmpty else {
+            Log.info("AX 拿到空文字，跳过")
             return nil
         }
 
@@ -111,8 +111,8 @@ enum SelectionReader {
             return nil
         }
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, containsEnglishLetters(trimmed) else {
-            Log.info("Cmd+C: 内容不含英文 \(trimmed.prefix(30))")
+        guard !trimmed.isEmpty else {
+            Log.info("Cmd+C: 内容为空")
             return nil
         }
         let capped = trimmed.count > 800 ? String(trimmed.prefix(800)) : trimmed
@@ -123,10 +123,4 @@ enum SelectionReader {
         )
     }
 
-    private static func containsEnglishLetters(_ s: String) -> Bool {
-        for scalar in s.unicodeScalars where scalar.isASCII {
-            if (0x41...0x5A).contains(scalar.value) || (0x61...0x7A).contains(scalar.value) { return true }
-        }
-        return false
-    }
 }

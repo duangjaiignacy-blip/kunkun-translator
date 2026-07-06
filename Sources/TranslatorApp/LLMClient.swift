@@ -64,7 +64,7 @@ actor LLMClient {
         let base = s.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
         guard let url = URL(string: base + "/chat/completions") else { throw LLMError.badURL }
 
-        let system = "你是一个高效的翻译助手。把用户给的英文翻译成\(s.targetLanguage)。只输出译文本身，不要任何解释、音标、词性、例句、引号或多余的话。若是句子就直接给通顺的整句翻译。"
+        let system = "你是一个高效的翻译助手。\(Self.translationTargetInstruction(for: text))只输出译文本身，不要任何解释、音标、词性、例句、引号或多余的话。若是句子就直接给通顺的整句翻译。"
         var user = text
         if let ctx = context, !ctx.isEmpty, ctx != text {
             user = "翻译这段：\"\(text)\"（上下文参考，勿翻译上下文：\"\(ctx)\"）"
@@ -134,16 +134,22 @@ actor LLMClient {
         let base = s.baseURL.trimmingCharacters(in: CharacterSet(charactersIn: "/ "))
         guard let url = URL(string: base + "/chat/completions") else { return nil }
 
-        // 整句不补释义（省时），只有单词/短语才补
+        // 整句不补释义（省时），只有单词/短语才补。中文没有空格，单独用字数兜底。
+        let isChineseSource = Self.containsCJK(text)
         let wordCount = text.split(whereSeparator: { $0 == " " || $0 == "\n" }).count
-        guard wordCount <= 4 else {
+        let isShortInput = isChineseSource ? text.count <= 8 : wordCount <= 4
+        guard isShortInput else {
             return TranslationResult(translation: translation, pronunciation: nil,
                                      partOfSpeech: nil, definitions: [], examples: [], isOffline: false)
         }
 
+        let sourceDescription = isChineseSource ? "中文词语/短语及其英文译文" : "英文单词/短语及其中文译文"
+        let jsonShape = isChineseSource
+            ? #"{"pronunciation":"","partOfSpeech":"词性或短语类型，可空","definitions":["最多2条中文释义"],"examples":["1条例句 — 英文翻译"]}"#
+            : #"{"pronunciation":"美式音标，可空","partOfSpeech":"词性如 n./v.，可空","definitions":["最多2条核心释义"],"examples":["1条例句 — 中文翻译"]}"#
         let system = """
-        用户给你一个英文单词/短语及其中文译文。请补充信息，严格只输出 JSON，不要 markdown 或多余的话：
-        {"pronunciation":"美式音标，可空","partOfSpeech":"词性如 n./v.，可空","definitions":["最多2条核心释义"],"examples":["1条例句 — 中文翻译"]}
+        用户给你一个\(sourceDescription)。请补充信息，严格只输出 JSON，不要 markdown 或多余的话：
+        \(jsonShape)
         字段值只能是字符串或字符串数组，不要嵌套对象。
         """
         let body: [String: Any] = [
@@ -229,7 +235,9 @@ actor LLMClient {
             Log.warn("系统版本 < macOS 15，无苹果离线翻译")
             return nil
         }
-        let target = await MainActor.run { appleTargetCode(SettingsStore.shared.targetLanguage) }
+        let target = await MainActor.run {
+            appleTargetCode(Self.translationTargetLanguage(for: text))
+        }
         guard let translated = await AppleTranslator.shared.translate(text, target: target),
               !translated.isEmpty else {
             return nil
@@ -261,7 +269,7 @@ actor LLMClient {
         guard let url = URL(string: base + "/chat/completions") else { throw LLMError.badURL }
 
         let system = """
-        你是一个高效的英汉翻译助手，追求快速简洁。用户给你英文文本，翻译成\(s.targetLanguage)。
+        你是一个高效的中英双向翻译助手，追求快速简洁。\(Self.translationTargetInstruction(for: text))
         严格只输出一个 JSON 对象，不要 markdown、不要任何解释或前后缀。字段值只能是字符串或字符串数组，不允许嵌套对象。结构：
         {"translation":"翻译","pronunciation":"美式音标，可空","partOfSpeech":"词性如 n./v./adj.，可空","definitions":["释义"],"examples":["例句 — 翻译"]}
         规则（务必精简以加快速度）：
@@ -310,6 +318,25 @@ actor LLMClient {
         guard let content = parsed.choices.first?.message.content else { throw LLMError.emptyResponse }
 
         return Self.parseTranslationResult(from: content, stripCodeFence: stripCodeFence)
+    }
+
+    private static func translationTargetLanguage(for text: String) -> String {
+        containsCJK(text) ? "英文" : "中文"
+    }
+
+    private static func translationTargetInstruction(for text: String) -> String {
+        if containsCJK(text) {
+            return "如果输入主要是中文，请翻译成英文。"
+        }
+        return "如果输入主要不是中文，请翻译成中文。"
+    }
+
+    private static func containsCJK(_ text: String) -> Bool {
+        text.unicodeScalars.contains { scalar in
+            (0x4E00...0x9FFF).contains(scalar.value) ||
+            (0x3400...0x4DBF).contains(scalar.value) ||
+            (0xF900...0xFAFF).contains(scalar.value)
+        }
     }
 
     /// 健壮解析 LLM 返回文本 → TranslationResult。
@@ -520,4 +547,3 @@ actor LLMClient {
         return t.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
-

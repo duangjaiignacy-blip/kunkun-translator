@@ -30,11 +30,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         detector.onCancel = { [weak self] in
             self?.bubble?.dismissBubble()
         }
-        detector.onNoText = { [weak self] point in
-            // 只有浮标模式才提示框选失败；纯快捷键模式下框选不该弹任何东西。
-            guard SettingsStore.shared.interactionMode.bubbleEnabled else { return }
-            self?.bubble?.showToast("未读到选中的英文（试 ⌥⇧T 兜底）",
-                                    at: point, kind: .warning)
+        detector.onNoText = { _ in
+            // selection empty; keep quiet in bubble mode.
+            // 选区内容为空或宿主 App 不暴露选中文本时，不再打扰用户。
+            Log.info("selection empty; bubble toast suppressed")
         }
         detector.isPointInBubble = { [weak self] p in
             self?.bubble?.bubbleContains(p) ?? false
@@ -51,7 +50,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                     // 直接弹翻译框并翻译，跳过小圆点。
                     self?.bubble?.showResultDirectly(info: info)
                 } else {
-                    self?.bubble?.showToast("未读到选中文字（先选中英文再按快捷键）", at: mouseLoc, kind: .warning)
+                    self?.bubble?.showToast("未读到选中文字（先选中文本再按快捷键）", at: mouseLoc, kind: .warning)
                 }
             }
         }

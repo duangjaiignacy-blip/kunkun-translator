@@ -150,7 +150,7 @@ struct VocabularyView: View {
                 }
                 Text("选择左侧条目查看详情")
                     .foregroundStyle(.secondary).font(.system(size: 13))
-                Text("或在任意 App 框选英文，从译卡里⭐加入生词本")
+                Text("或在任意 App 框选文本，从译卡里⭐加入生词本")
                     .foregroundStyle(.secondary).font(.system(size: 11))
                 Spacer()
             }

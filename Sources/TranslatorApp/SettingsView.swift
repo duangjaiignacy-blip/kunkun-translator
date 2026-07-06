@@ -262,10 +262,10 @@ struct SettingsView: View {
                 Toggle("AX 读不到时用 Cmd+C 兜底（短暂占用剪贴板）", isOn: $settings.useClipboardFallback)
                 VStack(alignment: .leading, spacing: 4) {
                     if settings.interactionMode.hotkeyEnabled {
-                        tip("• 快捷键：选中英文后按 ⌥ + ⇧ + T，直接弹出翻译框。")
+                        tip("• 快捷键：选中文本后按 ⌥ + ⇧ + T，直接弹出翻译框。")
                     }
                     if settings.interactionMode.bubbleEnabled {
-                        tip("• 浮标：框选英文 → 选区右上方小圆点 → 点圆点翻译。")
+                        tip("• 浮标：框选文本 → 选区右上方小圆点 → 点圆点翻译。")
                     }
                     tip("• 网页 / Electron App 里框选不灵时，用快捷键最稳。")
                 }

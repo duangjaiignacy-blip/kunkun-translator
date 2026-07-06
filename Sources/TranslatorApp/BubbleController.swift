@@ -165,6 +165,8 @@ final class BubbleController {
         p.backgroundColor = .clear
         p.hasShadow = true
         p.isOpaque = false
+        p.isMovableByWindowBackground = true
+        p.alphaValue = 0.96
         p.collectionBehavior = [.canJoinAllSpaces, .stationary, .ignoresCycle, .fullScreenAuxiliary]
         return p
     }
